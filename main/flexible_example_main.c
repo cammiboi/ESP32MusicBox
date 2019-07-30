@@ -21,7 +21,6 @@
 #include "audio_event_iface.h"
 #include "audio_mem.h"
 #include "audio_common.h"
-#include "fatfs_stream.h"
 #include "i2s_stream.h"
 #include "http_stream.h"
 #include "mp3_decoder.h"
@@ -30,8 +29,33 @@
 #include "audio_hal.h"
 #include "filter_resample.h"
 #include "esp_peripherals.h"
-#include "periph_sdcard.h"
 #include "periph_button.h"
+
+#define I2S_STREAM_CFG() {                                                      \
+    .type = AUDIO_STREAM_WRITER,                                                \
+    .task_prio = I2S_STREAM_TASK_PRIO,                                          \
+    .task_core = I2S_STREAM_TASK_CORE,                                          \
+    .task_stack = I2S_STREAM_TASK_STACK,                                        \
+    .out_rb_size = I2S_STREAM_RINGBUFFER_SIZE,                                  \
+    .i2s_config = {                                                             \
+        .mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  \
+        .sample_rate = 44100,                                                   \
+        .bits_per_sample = 16,                                                  \
+        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           \
+        .communication_format = I2S_COMM_FORMAT_I2S_LSB,                            \
+        .dma_buf_count = 3,                                                     \
+        .dma_buf_len = 300,                                                     \
+        .use_apll = 1,                                                          \
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,                               \
+    },                                                                          \
+    .i2s_pin_config = {                                                         \
+        .bck_io_num = 27,                                                 \
+        .ws_io_num = 26,                                                  \
+        .data_out_num = 25,                                               \
+        .data_in_num = -1,                                                \
+    },                                                                          \
+    .i2s_port = 0,                                                              \
+}
 
 static const char *TAG = "FLEXIBLE_PIPELINE";
 
@@ -54,24 +78,13 @@ static audio_element_handle_t create_filter(int source_rate, int source_channel,
     return rsp_filter_init(&rsp_cfg);
 }
 
-static audio_element_handle_t create_fatfs_stream(int sample_rates, int bits, int channels, audio_stream_type_t type)
-{
-    fatfs_stream_cfg_t fatfs_cfg = FATFS_STREAM_CFG_DEFAULT();
-    fatfs_cfg.type = type;
-    audio_element_handle_t fatfs_stream = fatfs_stream_init(&fatfs_cfg);
-    mem_assert(fatfs_stream);
-    audio_element_info_t writer_info = {0};
-    audio_element_getinfo(fatfs_stream, &writer_info);
-    writer_info.bits = bits;
-    writer_info.channels = channels;
-    writer_info.sample_rates = sample_rates;
-    audio_element_setinfo(fatfs_stream, &writer_info);
-    return fatfs_stream;
+static audio_element_handle_t create_http_stream(const char *url){
+    
 }
 
 static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type)
 {
-    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
+    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG();
     i2s_cfg.type = type;
     audio_element_handle_t i2s_stream = i2s_stream_init(&i2s_cfg);
     mem_assert(i2s_stream);
@@ -102,7 +115,9 @@ void flexible_pipeline_playback()
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
     pipeline_play = audio_pipeline_init(&pipeline_cfg);
 
-    ESP_LOGI(TAG, "[ 1 ] Create all audio elements for playback pipeline");
+    ESP_LOGI(TAG, "[ 1 ] Create all audio elements for playback pipeline")
+    
+
     audio_element_handle_t fatfs_aac_reader_el = create_fatfs_stream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_READER);
     audio_element_handle_t fatfs_mp3_reader_el = create_fatfs_stream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_READER);
     audio_element_handle_t mp3_decoder_el = create_mp3_decoder();
@@ -204,33 +219,6 @@ void app_main(void)
     // Initialize peripherals management
     esp_periph_config_t periph_cfg = { 0 };
     esp_periph_init(&periph_cfg);
-
-    // Initialize SD Card peripheral
-    periph_sdcard_cfg_t sdcard_cfg = {
-        .root = "/sdcard",
-        .card_detect_pin = SD_CARD_INTR_GPIO,   // GPIO_NUM_34
-    };
-    esp_periph_handle_t sdcard_handle = periph_sdcard_init(&sdcard_cfg);
-
-    // Initialize Button peripheral
-    periph_button_cfg_t btn_cfg = {
-        .gpio_mask = GPIO_SEL_36 | GPIO_SEL_39, // REC BTN & MODE BTN
-    };
-    esp_periph_handle_t button_handle = periph_button_init(&btn_cfg);
-
-    // Start sdcard & button peripheral
-    esp_periph_start(sdcard_handle);
-    esp_periph_start(button_handle);
-
-    // Wait until sdcard was mounted
-    while (!periph_sdcard_is_mounted(sdcard_handle)) {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-
-    // Setup audio codec
-    audio_hal_codec_config_t audio_hal_codec_cfg =  AUDIO_HAL_ES8388_DEFAULT();
-    audio_hal_handle_t hal = audio_hal_init(&audio_hal_codec_cfg, 0);
-    audio_hal_ctrl_codec(hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
 
     flexible_pipeline_playback();
     esp_periph_destroy();
