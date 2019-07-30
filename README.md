@@ -22,4 +22,4 @@ https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html#set
 ### Step 3- Setup path to ESP_ADF
 Follow the instructions below, but instead of IDF_PATH, define ADF_PATH to the location you cloned the git folder to in step 1. This will allow the toolchain to find ESP_ADF, and ESP_IDF (which is within the ESP_ADF folder).
 
-https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html#setup-path-to-esp-idf
+https://docs.espressif.com/projects/esp-idf/en/stable/get-started/add-idf_path-to-profile.html#add-idf-path-to-profile-windows
