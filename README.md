@@ -15,5 +15,6 @@ git checkout v2.0-beta1
 git submodule update --init --recursive
 ```
 ### Step 2- Install the ESP Toolchain
-Follow the instructions here depending if you have Mac, Windows, or Lunix
+Follow the instructions below depending if you have Mac, Windows, or Lunix:
+
 https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html#setup-toolchain
