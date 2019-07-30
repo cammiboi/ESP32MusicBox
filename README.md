@@ -18,3 +18,8 @@ git submodule update --init --recursive
 Follow the instructions below depending if you have Mac, Windows, or Lunix:
 
 https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html#setup-toolchain
+
+### Step 3- Setup path to ESP_ADF
+Follow the instructions below, but instead of IDF_PATH, define ADF_PATH to the location you cloned the git folder to in step 1. This will allow the toolchain to find ESP_ADF, and ESP_IDF (which is within the ESP_ADF folder).
+
+https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html#setup-path-to-esp-idf
